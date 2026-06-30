@@ -35,6 +35,10 @@ def CSV_cleanner_and_manger(filepath):
 
     return df_filtered
 
-def CSV_merger(df_1, df_2, df_3):
+def CSV_merger_and_short(df_1, df_2, df_3):
     merged_df = pd.concat([df_1, df_2, df_3], ignore_index = True)
+    merged_df["sales"] = (
+        merged_df.groupby("region")["sales"]
+        .transform(lambda s: s.rolling(window=14, min_periods=1).mean())
+    )
     return merged_df
