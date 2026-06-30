@@ -1,13 +1,11 @@
-# app.py
+# main.py
 import dash
 from dash import dcc, html, Input, Output, callback
 import dash_bootstrap_components as dbc
 import pandas as pd
 from datetime import datetime
 
-
 from subplotter import create_figure
-# Your data loader functions (unchanged)
 from CSV_Handler import CSV_cleanner_and_manger, CSV_merger_and_short
 
 # ---------- Load data ----------
@@ -20,7 +18,7 @@ merge_df['date'] = pd.to_datetime(merge_df['date'])
 min_date = merge_df['date'].min()
 max_date = merge_df['date'].max()
 
-# ---------- Statistics helper (overall) ----------
+# ---------- Statistics helper ----------
 def get_stats(df, date_range=None):
     if date_range:
         start, end = date_range
@@ -50,6 +48,7 @@ app.layout = dbc.Container([
         dbc.Col(
             html.Div([
                 html.H1("🍭 Pink Morsel Sales Dashboard",
+                        id="header",
                         className="display-4",
                         style={"color": PINK_PRIMARY, "fontWeight": 600}),
                 html.P(
@@ -114,6 +113,27 @@ app.layout = dbc.Container([
         ], width=12, className="mb-4"),
     ]),
 
+    # Region Picker
+    dbc.Row([
+        dbc.Col([
+            html.Label("Region:", className="font-weight-bold"),
+            dcc.RadioItems(
+                id="region-picker",
+                options=[
+                    {"label": "North", "value": "north"},
+                    {"label": "East",  "value": "east"},
+                    {"label": "South", "value": "south"},
+                    {"label": "West",  "value": "west"},
+                    {"label": "All",   "value": "all"},
+                ],
+                value="all",
+                inline=True,
+                labelStyle={"marginRight": "15px", "marginLeft": "5px"},
+                inputStyle={"marginRight": "5px"},
+            )
+        ], width=12, className="mb-4"),
+    ]),
+
     # Faceted Chart
     dbc.Row([
         dbc.Col(
@@ -147,21 +167,24 @@ app.layout = dbc.Container([
     Output("avg-before", "children"),
     Output("avg-after", "children"),
     Output("change-pct", "children"),
-    Input("date-slider", "value")
+    Input("date-slider", "value"),
+    Input("region-picker", "value"),
 )
-def update_dashboard(date_range):
+def update_dashboard(date_range, region):
     start_date = datetime.fromtimestamp(date_range[0])
     end_date = datetime.fromtimestamp(date_range[1])
 
-    # Filter data by date range
+    # Filter by date
     filtered_df = merge_df[
         (merge_df['date'] >= start_date) & (merge_df['date'] <= end_date)
     ]
 
-    # Generate the faceted figure using your subplotter
+    # Filter by region (skip if "all")
+    if region != "all":
+        filtered_df = filtered_df[filtered_df['region'] == region]
+
     fig = create_figure(filtered_df)
 
-    # Compute overall statistics from the filtered data
     avg_before, avg_after, change = get_stats(merge_df, (start_date, end_date))
 
     return fig, f"${avg_before:,.2f}", f"${avg_after:,.2f}", f"{change:+.1f}%"
